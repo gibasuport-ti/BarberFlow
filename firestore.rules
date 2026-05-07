@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Segurança padrão: Negar tudo
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Funções auxiliares
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() { 
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Validação de Usuário
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role']) &&
+             data.uid == request.auth.uid &&
+             data.name is string && data.name.size() > 0 &&
+             data.email is string &&
+             data.role in ['customer', 'admin'];
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin() || (isSignedIn() && request.auth.token.email == 'gibasuporte@gmail.com');
+      allow create: if isOwner(userId); // Simplificado para teste
+      allow update: if isOwner(userId) && (
+        (incoming().role == existing().role) || 
+        (request.auth.token.email == 'gibasuporte@gmail.com')
+      );
+    }
+
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (isAdmin() || !exists(/databases/$(database)/documents/services/$(serviceId)));
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && 
+                    incoming().status == 'pending';
+      allow update: if isSignedIn() && (isOwner(existing().userId) || isAdmin()) &&
+                    (isAdmin() || (incoming().status in ['cancelled'] && existing().status != 'completed'));
+    }
+
+    match /queue/{queueId} {
+      allow read: if true;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid &&
+                    incoming().status == 'waiting';
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+  }
+}

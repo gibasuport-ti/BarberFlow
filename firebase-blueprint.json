@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "User": {
+      "title": "Perfil do Usuário",
+      "description": "Informações de perfil do cliente ou barbeiro.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "ID único do Firebase Auth" },
+        "name": { "type": "string", "description": "Nome completo" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string", "description": "URL da foto de perfil" },
+        "role": { "type": "string", "enum": ["customer", "admin"], "description": "Papel no sistema" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Service": {
+      "title": "Catálogo de Serviços",
+      "description": "Cortes e tratamentos oferecidos.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "duration": { "type": "number", "description": "Duração em minutos" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["name", "price", "duration"]
+    },
+    "Appointment": {
+      "title": "Agendamento",
+      "description": "Reserva de horário para um serviço.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "serviceId", "date", "status"]
+    },
+    "Queue": {
+      "title": "Fila em Tempo Real",
+      "description": "Clientes esperando por atendimento imediato.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "joinedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["waiting", "serving", "finished"] }
+      },
+      "required": ["userId", "joinedAt", "status"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Dados do usuário autenticado."
+    },
+    "services/{serviceId}": {
+      "schema": "Service",
+      "description": "Catálogo público de cortes."
+    },
+    "appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Registro de agendamentos."
+    },
+    "queue/{queueId}": {
+      "schema": "Queue",
+      "description": "Fila de espera em tempo real."
+    }
+  }
+}
